@@ -64,22 +64,53 @@ const surveyRows = [
     type: "checkbox" as const,
     options: ["มี", "ไม่มี"],
   },
-  { label: "ข้อสังเกตเพิ่มเติม", type: "text" as const, multiline: true },
+  { label: "ข้อสังเกตเพิ่มเติม", type: "text" as const, multiline: true, optional: true },
 ];
 
 const comparisonCodes = ["F001", "F002", "F003"];
 
-function DottedInput({ name }: { name?: string }) {
+function DottedInput({ name, invalid }: { name?: string; invalid?: boolean }) {
   return (
     <input
       type="text"
       name={name}
-      className="w-full border-b border-dotted border-black/40 bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60"
+      className={`w-full border-b bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60 ${
+        invalid ? "border-red-400" : "border-dotted border-black/40"
+      }`}
     />
   );
 }
 
+function FieldError() {
+  return (
+    <p className="mt-1 text-xs font-medium text-red-600">
+      กรุณากรอกข้อมูลข้อนี้ก่อนส่งแบบบันทึกการสำรวจ
+    </p>
+  );
+}
+
 type SubmitStatus = "idle" | "submitting" | "error";
+
+function getInvalidKeys(form: HTMLFormElement): Set<string> {
+  const fd = new FormData(form);
+  const invalid = new Set<string>();
+
+  headerFields.forEach((_, i) => {
+    if (!String(fd.get(`h${i}`) ?? "").trim()) invalid.add(`h${i}`);
+  });
+
+  surveyRows.forEach((row, i) => {
+    if (row.optional) return;
+    const name = `row${i}`;
+    if (row.type === "checkbox") {
+      if (fd.getAll(name).length === 0) invalid.add(name);
+    } else if (!String(fd.get(name) ?? "").trim()) {
+      invalid.add(name);
+    }
+  });
+
+  return invalid;
+}
 
 function buildPayload(form: HTMLFormElement) {
   const fd = new FormData(form);
@@ -114,11 +145,21 @@ export default function FieldSurvey() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [invalidKeys, setInvalidKeys] = useState<Set<string>>(new Set());
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = formRef.current;
     if (!form) return;
+
+    const invalid = getInvalidKeys(form);
+    if (invalid.size > 0) {
+      setInvalidKeys(invalid);
+      const firstInvalid = form.querySelector(`[data-field="${[...invalid][0]}"]`);
+      firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setInvalidKeys(new Set());
 
     setStatus("submitting");
     try {
@@ -165,12 +206,21 @@ export default function FieldSurvey() {
 
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              {headerFields.map((field, index) => (
-                <div key={field} className="flex items-center gap-2">
-                  <span className="shrink-0">{field}</span>
-                  <DottedInput name={`h${index}`} />
-                </div>
-              ))}
+              {headerFields.map((field, index) => {
+                const key = `h${index}`;
+                const invalid = invalidKeys.has(key);
+                return (
+                  <div key={field} data-field={key}>
+                    <div className="flex items-center gap-2">
+                      <span className={`shrink-0 ${invalid ? "text-red-600 font-medium" : ""}`}>
+                        {field}
+                      </span>
+                      <DottedInput name={key} invalid={invalid} />
+                    </div>
+                    {invalid && <FieldError />}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="overflow-x-auto">
@@ -186,41 +236,54 @@ export default function FieldSurvey() {
                   </tr>
                 </thead>
                 <tbody>
-                  {surveyRows.map((row, rowIndex) => (
-                    <tr key={row.label} className="border-b border-black/10">
-                      <td className="py-2 pr-2 align-top">{row.label}</td>
-                      <td className="py-2 px-2 align-top">
-                        {row.type === "text" ? (
-                          row.multiline ? (
-                            <textarea
-                              rows={2}
-                              name={`row${rowIndex}`}
-                              className="w-full resize-y border-b border-dotted border-black/40 bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60"
-                            />
+                  {surveyRows.map((row, rowIndex) => {
+                    const key = `row${rowIndex}`;
+                    const invalid = invalidKeys.has(key);
+                    return (
+                      <tr
+                        key={row.label}
+                        data-field={key}
+                        className={`border-b border-black/10 ${invalid ? "bg-red-50" : ""}`}
+                      >
+                        <td className={`py-2 pr-2 align-top ${invalid ? "text-red-600 font-medium" : ""}`}>
+                          {row.label}
+                        </td>
+                        <td className="py-2 px-2 align-top">
+                          {row.type === "text" ? (
+                            row.multiline ? (
+                              <textarea
+                                rows={2}
+                                name={key}
+                                className={`w-full resize-y border-b bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60 ${
+                                  invalid ? "border-red-400" : "border-dotted border-black/40"
+                                }`}
+                              />
+                            ) : (
+                              <DottedInput name={key} invalid={invalid} />
+                            )
                           ) : (
-                            <DottedInput name={`row${rowIndex}`} />
-                          )
-                        ) : (
-                          <div className="flex flex-wrap gap-x-4 gap-y-1">
-                            {row.options.map((opt) => (
-                              <label
-                                key={opt}
-                                className="inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                              >
-                                <input
-                                  type="checkbox"
-                                  name={`row${rowIndex}`}
-                                  value={opt}
-                                  className="h-4 w-4 accent-black cursor-pointer"
-                                />
-                                {opt}
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                            <div className="flex flex-wrap gap-x-4 gap-y-1">
+                              {row.options.map((opt) => (
+                                <label
+                                  key={opt}
+                                  className="inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    name={key}
+                                    value={opt}
+                                    className="h-4 w-4 accent-black cursor-pointer"
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          {invalid && <FieldError />}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -62,7 +62,26 @@ function OpenQuestions({
   );
 }
 
+function FieldError() {
+  return (
+    <p className="mt-1 text-xs font-medium text-red-600">
+      กรุณากรอกข้อมูลข้อนี้ก่อนส่งแบบสัมภาษณ์
+    </p>
+  );
+}
+
 type SubmitStatus = "idle" | "submitting" | "error";
+
+function getInvalidKeys(form: HTMLFormElement): Set<string> {
+  const fd = new FormData(form);
+  const invalid = new Set<string>();
+
+  generalInfoFields.forEach((_, i) => {
+    if (!String(fd.get(`g${i}`) ?? "").trim()) invalid.add(`g${i}`);
+  });
+
+  return invalid;
+}
 
 function buildPayload(form: HTMLFormElement) {
   const fd = new FormData(form);
@@ -90,11 +109,21 @@ export default function Interview() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [invalidKeys, setInvalidKeys] = useState<Set<string>>(new Set());
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = formRef.current;
     if (!form) return;
+
+    const invalid = getInvalidKeys(form);
+    if (invalid.size > 0) {
+      setInvalidKeys(invalid);
+      const firstInvalid = form.querySelector(`[data-field="${[...invalid][0]}"]`);
+      firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setInvalidKeys(new Set());
 
     setStatus("submitting");
     try {
@@ -154,16 +183,23 @@ export default function Interview() {
               </h3>
 
               <div className="mt-4 space-y-4">
-                {generalInfoFields.map((field, index) => (
-                  <div key={field}>
-                    <p>{field}</p>
-                    <input
-                      type="text"
-                      name={`g${index}`}
-                      className="mt-1 w-full border-b border-dotted border-black/40 bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60"
-                    />
-                  </div>
-                ))}
+                {generalInfoFields.map((field, index) => {
+                  const key = `g${index}`;
+                  const invalid = invalidKeys.has(key);
+                  return (
+                    <div key={field} data-field={key}>
+                      <p className={invalid ? "text-red-600 font-medium" : undefined}>{field}</p>
+                      <input
+                        type="text"
+                        name={key}
+                        className={`mt-1 w-full border-b bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60 ${
+                          invalid ? "border-red-400" : "border-dotted border-black/40"
+                        }`}
+                      />
+                      {invalid && <FieldError />}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

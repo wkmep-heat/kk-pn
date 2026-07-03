@@ -131,6 +131,14 @@ const part4Statements = [
   "ข้อมูลจากประชาชนควรถูกนำไปใช้ประกอบการวางแผนพัฒนาเมือง",
 ];
 
+function FieldError() {
+  return (
+    <p className="mt-1 text-xs font-medium text-red-600">
+      กรุณาตอบคำถามข้อนี้ก่อนส่งแบบสอบถาม
+    </p>
+  );
+}
+
 function OptionInput({
   opt,
   name,
@@ -168,10 +176,14 @@ function OptionInput({
 function LikertTable({
   statements,
   namePrefix,
+  invalidKeys,
 }: {
   statements: string[];
   namePrefix: string;
+  invalidKeys: Set<string>;
 }) {
+  const hasInvalid = statements.some((_, index) => invalidKeys.has(`${namePrefix}q${index}`));
+
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full border-collapse text-sm">
@@ -187,24 +199,37 @@ function LikertTable({
           </tr>
         </thead>
         <tbody>
-          {statements.map((statement, index) => (
-            <tr key={statement} className="border-b border-black/10">
-              <td className="py-2 pr-2 align-top">{index + 1}</td>
-              <td className="py-2 px-2 align-top">{statement}</td>
-              {scaleLevels.map((level) => (
-                <td key={level} className="py-2 px-2 text-center align-top">
-                  <input
-                    type="radio"
-                    name={`${namePrefix}q${index}`}
-                    value={level}
-                    className="h-4 w-4 accent-black cursor-pointer"
-                  />
+          {statements.map((statement, index) => {
+            const key = `${namePrefix}q${index}`;
+            const invalid = invalidKeys.has(key);
+            return (
+              <tr
+                key={statement}
+                data-field={key}
+                className={`border-b border-black/10 ${invalid ? "bg-red-50" : ""}`}
+              >
+                <td className="py-2 pr-2 align-top">{index + 1}</td>
+                <td className={`py-2 px-2 align-top ${invalid ? "text-red-600 font-medium" : ""}`}>
+                  {statement}
                 </td>
-              ))}
-            </tr>
-          ))}
+                {scaleLevels.map((level) => (
+                  <td key={level} className="py-2 px-2 text-center align-top">
+                    <input
+                      type="radio"
+                      name={key}
+                      value={level}
+                      className="h-4 w-4 accent-black cursor-pointer"
+                    />
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+      {hasInvalid && (
+        <p className="mt-2 text-xs font-medium text-red-600">กรุณาตอบให้ครบทุกข้อ</p>
+      )}
     </div>
   );
 }
@@ -260,15 +285,53 @@ function buildPayload(form: HTMLFormElement) {
   return { part1, part2, part3, part4, part5 };
 }
 
+function getInvalidKeys(form: HTMLFormElement): Set<string> {
+  const fd = new FormData(form);
+  const invalid = new Set<string>();
+
+  part1Questions.forEach((_, i) => {
+    if (!fd.get(`q${i}`)) invalid.add(`q${i}`);
+  });
+
+  part2Statements.forEach((_, i) => {
+    if (!fd.get(`p2q${i}`)) invalid.add(`p2q${i}`);
+  });
+
+  part3Questions.forEach((q, i) => {
+    const name = `p3q${i}`;
+    if (q.type === "checkbox") {
+      if (fd.getAll(name).length === 0) invalid.add(name);
+    } else if (!String(fd.get(name) ?? "").trim()) {
+      invalid.add(name);
+    }
+  });
+
+  part4Statements.forEach((_, i) => {
+    if (!fd.get(`p4q${i}`)) invalid.add(`p4q${i}`);
+  });
+
+  return invalid;
+}
+
 export default function Questionnaire() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [invalidKeys, setInvalidKeys] = useState<Set<string>>(new Set());
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = formRef.current;
     if (!form) return;
+
+    const invalid = getInvalidKeys(form);
+    if (invalid.size > 0) {
+      setInvalidKeys(invalid);
+      const firstInvalid = form.querySelector(`[data-field="${[...invalid][0]}"]`);
+      firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setInvalidKeys(new Set());
 
     setStatus("submitting");
     try {
@@ -338,18 +401,25 @@ export default function Questionnaire() {
               </p>
 
               <ol className="mt-4 space-y-4 list-decimal list-inside">
-                {part1Questions.map((q, qIndex) => (
-                  <li key={q.text}>
-                    {q.text}
-                    <ul className="mt-1 ml-6 space-y-1">
-                      {q.options.map((opt) => (
-                        <li key={opt}>
-                          <OptionInput opt={opt} name={`q${qIndex}`} type="radio" />
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
+                {part1Questions.map((q, qIndex) => {
+                  const key = `q${qIndex}`;
+                  const invalid = invalidKeys.has(key);
+                  return (
+                    <li key={q.text} data-field={key}>
+                      <span className={invalid ? "text-red-600 font-medium" : undefined}>
+                        {q.text}
+                      </span>
+                      <ul className="mt-1 ml-6 space-y-1">
+                        {q.options.map((opt) => (
+                          <li key={opt}>
+                            <OptionInput opt={opt} name={key} type="radio" />
+                          </li>
+                        ))}
+                      </ul>
+                      {invalid && <FieldError />}
+                    </li>
+                  );
+                })}
               </ol>
             </div>
 
@@ -368,7 +438,7 @@ export default function Questionnaire() {
                 ))}
               </ul>
 
-              <LikertTable statements={part2Statements} namePrefix="p2" />
+              <LikertTable statements={part2Statements} namePrefix="p2" invalidKeys={invalidKeys} />
             </div>
 
             <div>
@@ -380,33 +450,36 @@ export default function Questionnaire() {
               </p>
 
               <ol className="mt-4 space-y-4 list-decimal list-inside">
-                {part3Questions.map((q, qIndex) => (
-                  <li key={q.text}>
-                    {q.text}
-                    {q.type === "text" ? (
-                      <div className="mt-2 ml-6 flex items-center gap-2">
-                        <span>ตอบ</span>
-                        <input
-                          type="text"
-                          name={`p3q${qIndex}`}
-                          className="w-full max-w-md border-b border-black/30 bg-transparent px-1 focus:outline-none focus:border-black/60"
-                        />
-                      </div>
-                    ) : (
-                      <ul className="mt-1 ml-6 space-y-1">
-                        {q.options.map((opt) => (
-                          <li key={opt}>
-                            <OptionInput
-                              opt={opt}
-                              name={`p3q${qIndex}`}
-                              type={q.type}
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                ))}
+                {part3Questions.map((q, qIndex) => {
+                  const key = `p3q${qIndex}`;
+                  const invalid = invalidKeys.has(key);
+                  return (
+                    <li key={q.text} data-field={key}>
+                      <span className={invalid ? "text-red-600 font-medium" : undefined}>
+                        {q.text}
+                      </span>
+                      {q.type === "text" ? (
+                        <div className="mt-2 ml-6 flex items-center gap-2">
+                          <span>ตอบ</span>
+                          <input
+                            type="text"
+                            name={key}
+                            className="w-full max-w-md border-b border-black/30 bg-transparent px-1 focus:outline-none focus:border-black/60"
+                          />
+                        </div>
+                      ) : (
+                        <ul className="mt-1 ml-6 space-y-1">
+                          {q.options.map((opt) => (
+                            <li key={opt}>
+                              <OptionInput opt={opt} name={key} type={q.type} />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {invalid && <FieldError />}
+                    </li>
+                  );
+                })}
               </ol>
             </div>
 
@@ -418,7 +491,7 @@ export default function Questionnaire() {
                 โปรดทำเครื่องหมาย ✓ ในช่องระดับความคิดเห็น
               </p>
 
-              <LikertTable statements={part4Statements} namePrefix="p4" />
+              <LikertTable statements={part4Statements} namePrefix="p4" invalidKeys={invalidKeys} />
             </div>
 
             <div>
