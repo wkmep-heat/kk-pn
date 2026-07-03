@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import SiteHeader from "./_components/SiteHeader";
+import SubmittedNotice from "./_components/SubmittedNotice";
 
 const appendices = [
   { code: "ก", title: "ภาคผนวก ก", href: "/appendix-a" },
@@ -11,6 +13,10 @@ export default function Home() {
   return (
     <>
       <SiteHeader />
+
+      <Suspense fallback={null}>
+        <SubmittedNotice />
+      </Suspense>
 
       <main className="flex-1">
         <section className="mx-auto max-w-4xl px-6 py-16 text-center">

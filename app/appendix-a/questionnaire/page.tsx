@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import PageNav from "../_components/PageNav";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import SiteHeader from "../../_components/SiteHeader";
 
 const part1Questions = [
@@ -142,7 +145,8 @@ function OptionInput({
     <label className="inline-flex items-center gap-2 cursor-pointer">
       <input
         type={type}
-        name={type === "radio" ? name : undefined}
+        name={name}
+        value={isOther ? "อื่น ๆ" : opt}
         className="h-4 w-4 accent-black cursor-pointer"
       />
       {isOther ? (
@@ -150,6 +154,7 @@ function OptionInput({
           อื่น ๆ ระบุ
           <input
             type="text"
+            name={`${name}_other`}
             className="border-b border-black/30 bg-transparent px-1 focus:outline-none focus:border-black/60"
           />
         </span>
@@ -204,7 +209,82 @@ function LikertTable({
   );
 }
 
+type SubmitStatus = "idle" | "submitting" | "error";
+
+function otherAwareValue(value: FormDataEntryValue | null, other: FormDataEntryValue | null) {
+  if (value === null) return "";
+  return value === "อื่น ๆ" ? `อื่น ๆ: ${other ?? ""}` : String(value);
+}
+
+function buildPayload(form: HTMLFormElement) {
+  const fd = new FormData(form);
+
+  const part1 = part1Questions.map((q, i) => {
+    const name = `q${i}`;
+    return {
+      question: q.text,
+      answer: otherAwareValue(fd.get(name), fd.get(`${name}_other`)),
+    };
+  });
+
+  const part2 = part2Statements.map((statement, i) => ({
+    statement,
+    rating: fd.get(`p2q${i}`) as string | null,
+  }));
+
+  const part3 = part3Questions.map((q, i) => {
+    const name = `p3q${i}`;
+    if (q.type === "text") {
+      return { question: q.text, answer: (fd.get(name) as string) ?? "" };
+    }
+    if (q.type === "radio") {
+      return {
+        question: q.text,
+        answer: otherAwareValue(fd.get(name), fd.get(`${name}_other`)),
+      };
+    }
+    const other = fd.get(`${name}_other`);
+    const answers = fd
+      .getAll(name)
+      .map((v) => (v === "อื่น ๆ" ? `อื่น ๆ: ${other ?? ""}` : String(v)));
+    return { question: q.text, answer: answers.join(", ") };
+  });
+
+  const part4 = part4Statements.map((statement, i) => ({
+    statement,
+    rating: fd.get(`p4q${i}`) as string | null,
+  }));
+
+  const part5 = (fd.get("p5") as string) ?? "";
+
+  return { part1, part2, part3, part4, part5 };
+}
+
 export default function Questionnaire() {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [status, setStatus] = useState<SubmitStatus>("idle");
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = formRef.current;
+    if (!form) return;
+
+    setStatus("submitting");
+    try {
+      const payload = buildPayload(form);
+      const res = await fetch("/api/questionnaire", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("submit failed");
+      router.push("/?submitted=questionnaire");
+    } catch {
+      setStatus("error");
+    }
+  }
+
   return (
     <>
       <SiteHeader />
@@ -248,6 +328,7 @@ export default function Questionnaire() {
               </p>
             </div>
 
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
             <div>
               <h3 className="font-bold">
                 ตอนที่ 1 ข้อมูลทั่วไปของผู้ตอบแบบสอบถาม
@@ -307,6 +388,7 @@ export default function Questionnaire() {
                         <span>ตอบ</span>
                         <input
                           type="text"
+                          name={`p3q${qIndex}`}
                           className="w-full max-w-md border-b border-black/30 bg-transparent px-1 focus:outline-none focus:border-black/60"
                         />
                       </div>
@@ -347,13 +429,26 @@ export default function Questionnaire() {
 
               <textarea
                 rows={6}
+                name="p5"
                 className="mt-4 w-full resize-y rounded-md border border-black/20 bg-transparent p-3 focus:outline-none focus:border-black/60"
               />
             </div>
 
-            <PageNav
-              next={{ href: "/appendix-a/interview", label: "แบบสัมภาษณ์ผู้รู้และผู้เกี่ยวข้อง" }}
-            />
+            <div className="flex flex-col items-center gap-3 border-t border-black/10 pt-6">
+              <button
+                type="submit"
+                disabled={status === "submitting"}
+                className="rounded-md bg-black px-6 py-2.5 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50"
+              >
+                {status === "submitting" ? "กำลังส่งข้อมูล..." : "ส่งแบบสอบถาม"}
+              </button>
+              {status === "error" && (
+                <p className="text-sm text-red-700">
+                  เกิดข้อผิดพลาดในการส่งแบบสอบถาม กรุณาลองใหม่อีกครั้ง
+                </p>
+              )}
+            </div>
+            </form>
           </div>
         </section>
       </main>

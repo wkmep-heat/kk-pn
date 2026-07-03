@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import PageNav from "../_components/PageNav";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import SiteHeader from "../../_components/SiteHeader";
 
 const generalInfoFields = [
@@ -36,14 +39,21 @@ const section4Questions = [
   "ประชาชนควรได้รับข้อมูลแจ้งเตือนหรือคำแนะนำเกี่ยวกับความร้อนเมืองในลักษณะใด",
 ];
 
-function OpenQuestions({ questions }: { questions: string[] }) {
+function OpenQuestions({
+  questions,
+  namePrefix,
+}: {
+  questions: string[];
+  namePrefix: string;
+}) {
   return (
     <ol className="mt-4 space-y-4 list-decimal list-inside">
-      {questions.map((q) => (
+      {questions.map((q, index) => (
         <li key={q}>
           {q}
           <textarea
             rows={2}
+            name={`${namePrefix}q${index}`}
             className="mt-2 w-full resize-y border-b border-dotted border-black/40 bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60"
           />
         </li>
@@ -52,7 +62,55 @@ function OpenQuestions({ questions }: { questions: string[] }) {
   );
 }
 
+type SubmitStatus = "idle" | "submitting" | "error";
+
+function buildPayload(form: HTMLFormElement) {
+  const fd = new FormData(form);
+
+  const generalInfo = generalInfoFields.map((field, i) => ({
+    field,
+    value: (fd.get(`g${i}`) as string) ?? "",
+  }));
+
+  const toAnswers = (questions: string[], namePrefix: string) =>
+    questions.map((question, i) => ({
+      question,
+      answer: (fd.get(`${namePrefix}q${i}`) as string) ?? "",
+    }));
+
+  return {
+    generalInfo,
+    section2: toAnswers(section2Questions, "s2"),
+    section3: toAnswers(section3Questions, "s3"),
+    section4: toAnswers(section4Questions, "s4"),
+  };
+}
+
 export default function Interview() {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [status, setStatus] = useState<SubmitStatus>("idle");
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = formRef.current;
+    if (!form) return;
+
+    setStatus("submitting");
+    try {
+      const payload = buildPayload(form);
+      const res = await fetch("/api/interview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("submit failed");
+      router.push("/?submitted=interview");
+    } catch {
+      setStatus("error");
+    }
+  }
+
   return (
     <>
       <SiteHeader />
@@ -89,17 +147,19 @@ export default function Interview() {
               </p>
             </div>
 
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
             <div>
               <h3 className="font-bold">
                 ส่วนที่ 1 ข้อมูลทั่วไปของผู้ให้สัมภาษณ์
               </h3>
 
               <div className="mt-4 space-y-4">
-                {generalInfoFields.map((field) => (
+                {generalInfoFields.map((field, index) => (
                   <div key={field}>
                     <p>{field}</p>
                     <input
                       type="text"
+                      name={`g${index}`}
                       className="mt-1 w-full border-b border-dotted border-black/40 bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60"
                     />
                   </div>
@@ -112,7 +172,7 @@ export default function Interview() {
                 ส่วนที่ 2 ประเด็นคำถามสำหรับผู้เชี่ยวชาญด้านภูมิสารสนเทศ/GIS
               </h3>
 
-              <OpenQuestions questions={section2Questions} />
+              <OpenQuestions questions={section2Questions} namePrefix="s2" />
             </div>
 
             <div>
@@ -120,7 +180,7 @@ export default function Interview() {
                 ส่วนที่ 3 ประเด็นคำถามสำหรับผู้เกี่ยวข้องด้านผังเมือง/เทศบาล/สำนักการช่าง
               </h3>
 
-              <OpenQuestions questions={section3Questions} />
+              <OpenQuestions questions={section3Questions} namePrefix="s3" />
             </div>
 
             <div>
@@ -128,13 +188,24 @@ export default function Interview() {
                 ส่วนที่ 4 ประเด็นคำถามสำหรับผู้เชี่ยวชาญด้านอุตุนิยมวิทยา/ภัยพิบัติ
               </h3>
 
-              <OpenQuestions questions={section4Questions} />
+              <OpenQuestions questions={section4Questions} namePrefix="s4" />
             </div>
 
-            <PageNav
-              prev={{ href: "/appendix-a/questionnaire", label: "แบบสอบถามประชาชน" }}
-              next={{ href: "/appendix-a/field-survey", label: "แบบบันทึกการสำรวจภาคสนาม" }}
-            />
+            <div className="flex flex-col items-center gap-3 border-t border-black/10 pt-6">
+              <button
+                type="submit"
+                disabled={status === "submitting"}
+                className="rounded-md bg-black px-6 py-2.5 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50"
+              >
+                {status === "submitting" ? "กำลังส่งข้อมูล..." : "ส่งแบบสัมภาษณ์"}
+              </button>
+              {status === "error" && (
+                <p className="text-sm text-red-700">
+                  เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง
+                </p>
+              )}
+            </div>
+            </form>
           </div>
         </section>
       </main>

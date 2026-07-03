@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import PageNav from "../_components/PageNav";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import SiteHeader from "../../_components/SiteHeader";
 
 const headerFields = ["วันที่สำรวจ", "เวลา", "ผู้สำรวจ", "สภาพอากาศขณะสำรวจ"];
@@ -66,16 +69,72 @@ const surveyRows = [
 
 const comparisonCodes = ["F001", "F002", "F003"];
 
-function DottedInput() {
+function DottedInput({ name }: { name?: string }) {
   return (
     <input
       type="text"
+      name={name}
       className="w-full border-b border-dotted border-black/40 bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60"
     />
   );
 }
 
+type SubmitStatus = "idle" | "submitting" | "error";
+
+function buildPayload(form: HTMLFormElement) {
+  const fd = new FormData(form);
+
+  const header = headerFields.map((field, i) => ({
+    field,
+    value: (fd.get(`h${i}`) as string) ?? "",
+  }));
+
+  const rows = surveyRows.map((row, i) => {
+    const name = `row${i}`;
+    if (row.type === "checkbox") {
+      return { label: row.label, value: fd.getAll(name).join(", ") };
+    }
+    return { label: row.label, value: (fd.get(name) as string) ?? "" };
+  });
+
+  const comparisons = comparisonCodes.map((code, i) => ({
+    code,
+    name: (fd.get(`cmp${i}_name`) as string) ?? "",
+    lst: (fd.get(`cmp${i}_lst`) as string) ?? "",
+    ndvi: (fd.get(`cmp${i}_ndvi`) as string) ?? "",
+    ndbi: (fd.get(`cmp${i}_ndbi`) as string) ?? "",
+    fieldFinding: (fd.get(`cmp${i}_field`) as string) ?? "",
+    match: fd.getAll(`cmp${i}_match`).join(", "),
+  }));
+
+  return { header, rows, comparisons };
+}
+
 export default function FieldSurvey() {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [status, setStatus] = useState<SubmitStatus>("idle");
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = formRef.current;
+    if (!form) return;
+
+    setStatus("submitting");
+    try {
+      const payload = buildPayload(form);
+      const res = await fetch("/api/field-survey", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("submit failed");
+      router.push("/?submitted=field-survey");
+    } catch {
+      setStatus("error");
+    }
+  }
+
   return (
     <>
       <SiteHeader />
@@ -104,11 +163,12 @@ export default function FieldSurvey() {
               แบบบันทึกจุดสำรวจพื้นที่ร้อนเมืองและพื้นที่เสี่ยงซ้ำซ้อน
             </p>
 
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              {headerFields.map((field) => (
+              {headerFields.map((field, index) => (
                 <div key={field} className="flex items-center gap-2">
                   <span className="shrink-0">{field}</span>
-                  <DottedInput />
+                  <DottedInput name={`h${index}`} />
                 </div>
               ))}
             </div>
@@ -126,7 +186,7 @@ export default function FieldSurvey() {
                   </tr>
                 </thead>
                 <tbody>
-                  {surveyRows.map((row) => (
+                  {surveyRows.map((row, rowIndex) => (
                     <tr key={row.label} className="border-b border-black/10">
                       <td className="py-2 pr-2 align-top">{row.label}</td>
                       <td className="py-2 px-2 align-top">
@@ -134,10 +194,11 @@ export default function FieldSurvey() {
                           row.multiline ? (
                             <textarea
                               rows={2}
+                              name={`row${rowIndex}`}
                               className="w-full resize-y border-b border-dotted border-black/40 bg-transparent px-1 focus:outline-none focus:border-solid focus:border-black/60"
                             />
                           ) : (
-                            <DottedInput />
+                            <DottedInput name={`row${rowIndex}`} />
                           )
                         ) : (
                           <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -148,6 +209,8 @@ export default function FieldSurvey() {
                               >
                                 <input
                                   type="checkbox"
+                                  name={`row${rowIndex}`}
+                                  value={opt}
                                   className="h-4 w-4 accent-black cursor-pointer"
                                 />
                                 {opt}
@@ -185,23 +248,23 @@ export default function FieldSurvey() {
                     </tr>
                   </thead>
                   <tbody>
-                    {comparisonCodes.map((code) => (
+                    {comparisonCodes.map((code, codeIndex) => (
                       <tr key={code} className="border-b border-black/10">
                         <td className="py-2 pr-2 align-top">{code}</td>
                         <td className="py-2 px-2 align-top">
-                          <DottedInput />
+                          <DottedInput name={`cmp${codeIndex}_name`} />
                         </td>
                         <td className="py-2 px-2 align-top">
-                          <DottedInput />
+                          <DottedInput name={`cmp${codeIndex}_lst`} />
                         </td>
                         <td className="py-2 px-2 align-top">
-                          <DottedInput />
+                          <DottedInput name={`cmp${codeIndex}_ndvi`} />
                         </td>
                         <td className="py-2 px-2 align-top">
-                          <DottedInput />
+                          <DottedInput name={`cmp${codeIndex}_ndbi`} />
                         </td>
                         <td className="py-2 px-2 align-top">
-                          <DottedInput />
+                          <DottedInput name={`cmp${codeIndex}_field`} />
                         </td>
                         <td className="py-2 px-2 align-top">
                           <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -212,6 +275,8 @@ export default function FieldSurvey() {
                               >
                                 <input
                                   type="checkbox"
+                                  name={`cmp${codeIndex}_match`}
+                                  value={opt}
                                   className="h-4 w-4 accent-black cursor-pointer"
                                 />
                                 {opt}
@@ -226,9 +291,21 @@ export default function FieldSurvey() {
               </div>
             </div>
 
-            <PageNav
-              prev={{ href: "/appendix-a/interview", label: "แบบสัมภาษณ์ผู้รู้และผู้เกี่ยวข้อง" }}
-            />
+            <div className="flex flex-col items-center gap-3 border-t border-black/10 pt-6">
+              <button
+                type="submit"
+                disabled={status === "submitting"}
+                className="rounded-md bg-black px-6 py-2.5 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50"
+              >
+                {status === "submitting" ? "กำลังส่งข้อมูล..." : "ส่งแบบบันทึกการสำรวจ"}
+              </button>
+              {status === "error" && (
+                <p className="text-sm text-red-700">
+                  เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง
+                </p>
+              )}
+            </div>
+            </form>
           </div>
         </section>
       </main>
