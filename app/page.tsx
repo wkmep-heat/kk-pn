@@ -1,17 +1,16 @@
+import Link from "next/link";
+import SiteHeader from "./_components/SiteHeader";
+
 const appendices = [
-  { code: "ก", title: "ภาคผนวก ก" },
-  { code: "ข", title: "ภาคผนวก ข" },
-  { code: "ค", title: "ภาคผนวก ค" },
+  { code: "ก", title: "ภาคผนวก ก", href: "/appendix-a" },
+  { code: "ข", title: "ภาคผนวก ข", href: null },
+  { code: "ค", title: "ภาคผนวก ค", href: null },
 ];
 
 export default function Home() {
   return (
     <>
-      <header className="border-b border-black/10">
-        <div className="mx-auto max-w-4xl px-6 py-5">
-          <span className="text-lg font-semibold">ภาคผนวก</span>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="flex-1">
         <section className="mx-auto max-w-4xl px-6 py-16 text-center">
@@ -23,18 +22,25 @@ export default function Home() {
 
         <section className="mx-auto max-w-4xl px-6 pb-20">
           <div className="grid gap-4 sm:grid-cols-3">
-            {appendices.map((item) => (
-              <div
-                key={item.code}
-                className="rounded-lg border border-black/10 p-6 text-center"
-              >
-                <div className="text-2xl font-bold">{item.code}</div>
-                <div className="mt-1 text-sm text-black/60">{item.title}</div>
-                <div className="mt-4 text-xs text-black/40">
-                  เนื้อหาจะเพิ่มเติมภายหลัง
+            {appendices.map((item) => {
+              const card = (
+                <div className="rounded-lg border border-black/10 p-6 text-center h-full">
+                  <div className="text-2xl font-bold">{item.code}</div>
+                  <div className="mt-1 text-sm text-black/60">{item.title}</div>
+                  <div className="mt-4 text-xs text-black/40">
+                    {item.href ? "ดูเนื้อหา" : "เนื้อหาจะเพิ่มเติมภายหลัง"}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+
+              return item.href ? (
+                <Link key={item.code} href={item.href} className="hover:border-black/30 rounded-lg">
+                  {card}
+                </Link>
+              ) : (
+                <div key={item.code}>{card}</div>
+              );
+            })}
           </div>
         </section>
       </main>
