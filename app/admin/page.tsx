@@ -2,6 +2,7 @@ import SiteHeader from "../_components/SiteHeader";
 import { readSubmissions } from "../api/_lib/submissions";
 import AdminLogin from "./AdminLogin";
 import { isAdminAuthenticated } from "./auth";
+import DeleteButton from "./DeleteButton";
 import LogoutButton from "./LogoutButton";
 
 type ChoiceAnswer = { question: string; answer: string };
@@ -55,8 +56,11 @@ function QuestionnaireList({ submissions }: { submissions: QuestionnaireSubmissi
     <div className="mt-4 space-y-4">
       {submissions.map((s, idx) => (
         <details key={s.id} className="rounded-lg border border-black/10 p-4">
-          <summary className="cursor-pointer font-medium">
-            ฉบับที่ {submissions.length - idx} — {formatDate(s.submittedAt)}
+          <summary className="flex cursor-pointer items-center justify-between gap-4 font-medium">
+            <span>
+              ฉบับที่ {submissions.length - idx} — {formatDate(s.submittedAt)}
+            </span>
+            <DeleteButton type="questionnaire" id={s.id} />
           </summary>
           <div className="mt-4 space-y-4 text-sm">
             <div>
@@ -118,8 +122,11 @@ function InterviewList({ submissions }: { submissions: InterviewSubmission[] }) 
     <div className="mt-4 space-y-4">
       {submissions.map((s, idx) => (
         <details key={s.id} className="rounded-lg border border-black/10 p-4">
-          <summary className="cursor-pointer font-medium">
-            ฉบับที่ {submissions.length - idx} — {formatDate(s.submittedAt)}
+          <summary className="flex cursor-pointer items-center justify-between gap-4 font-medium">
+            <span>
+              ฉบับที่ {submissions.length - idx} — {formatDate(s.submittedAt)}
+            </span>
+            <DeleteButton type="interview" id={s.id} />
           </summary>
           <div className="mt-4 space-y-4 text-sm">
             <div>
@@ -177,8 +184,11 @@ function FieldSurveyList({ submissions }: { submissions: FieldSurveySubmission[]
     <div className="mt-4 space-y-4">
       {submissions.map((s, idx) => (
         <details key={s.id} className="rounded-lg border border-black/10 p-4">
-          <summary className="cursor-pointer font-medium">
-            ฉบับที่ {submissions.length - idx} — {formatDate(s.submittedAt)}
+          <summary className="flex cursor-pointer items-center justify-between gap-4 font-medium">
+            <span>
+              ฉบับที่ {submissions.length - idx} — {formatDate(s.submittedAt)}
+            </span>
+            <DeleteButton type="field-survey" id={s.id} />
           </summary>
           <div className="mt-4 space-y-4 text-sm">
             <div>

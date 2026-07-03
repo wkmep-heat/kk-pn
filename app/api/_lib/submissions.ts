@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { get, list, put } from "@vercel/blob";
+import { del, get, list, put } from "@vercel/blob";
 
 function folderFor(fileName: string) {
   return fileName.replace(/-submissions\.json$/, "");
@@ -37,4 +37,9 @@ export async function appendSubmission(fileName: string, body: Record<string, un
   });
 
   return submission;
+}
+
+export async function deleteSubmission(fileName: string, id: string) {
+  const prefix = folderFor(fileName);
+  await del(`${prefix}/${id}.json`);
 }
