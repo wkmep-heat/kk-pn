@@ -1,16 +1,26 @@
 import { randomUUID } from "crypto";
-import { promises as fs } from "fs";
-import path from "path";
+import { get, list, put } from "@vercel/blob";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+function folderFor(fileName: string) {
+  return fileName.replace(/-submissions\.json$/, "");
+}
 
 export async function readSubmissions(fileName: string): Promise<unknown[]> {
-  try {
-    const raw = await fs.readFile(path.join(DATA_DIR, fileName), "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  const prefix = `${folderFor(fileName)}/`;
+  const { blobs } = await list({ prefix });
+
+  const submissions = await Promise.all(
+    blobs.map(async (blob) => {
+      const result = await get(blob.pathname, { access: "private" });
+      if (!result || result.statusCode !== 200) return null;
+      const text = await new Response(result.stream).text();
+      return JSON.parse(text) as Record<string, unknown>;
+    })
+  );
+
+  return submissions
+    .filter((s): s is Record<string, unknown> => s !== null)
+    .sort((a, b) => String(a.submittedAt).localeCompare(String(b.submittedAt)));
 }
 
 export async function appendSubmission(fileName: string, body: Record<string, unknown>) {
@@ -20,14 +30,11 @@ export async function appendSubmission(fileName: string, body: Record<string, un
     ...body,
   };
 
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const submissions = await readSubmissions(fileName);
-  submissions.push(submission);
-  await fs.writeFile(
-    path.join(DATA_DIR, fileName),
-    JSON.stringify(submissions, null, 2),
-    "utf-8"
-  );
+  const prefix = folderFor(fileName);
+  await put(`${prefix}/${submission.id}.json`, JSON.stringify(submission), {
+    access: "private",
+    contentType: "application/json",
+  });
 
   return submission;
 }
