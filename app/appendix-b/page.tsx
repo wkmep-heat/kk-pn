@@ -6,8 +6,8 @@ export default function AppendixB() {
     <>
       <SiteHeader />
 
-      <main className="flex-1">
-        <section className="mx-auto max-w-4xl px-6 py-16">
+      <main className="flex-1 flex flex-col">
+        <div className="px-6 pt-6">
           <p className="text-sm text-black/40">
             <Link href="/" className="hover:underline">
               ภาคผนวก
@@ -20,26 +20,17 @@ export default function AppendixB() {
           >
             ← กลับหน้าหลัก
           </Link>
-          <h1 className="mt-4 text-2xl sm:text-3xl font-bold">
-            ภาคผนวก ข วิธีการดำเนินงาน
-          </h1>
-
-          <div className="mt-8 aspect-[4/3] w-full overflow-hidden rounded-lg border border-black/10 sm:aspect-video">
-            <iframe
-              src="https://online.pubhtml5.com/jqacy/qoxv/"
-              title="วิธีการดำเนินงาน E-Book"
-              className="h-full w-full"
-              allowFullScreen
-            />
-          </div>
-        </section>
-      </main>
-
-      <footer className="border-t border-black/10">
-        <div className="mx-auto max-w-4xl px-6 py-6 text-center text-xs text-black/40">
-          © {new Date().getFullYear()} ภาคผนวก
         </div>
-      </footer>
+
+        <div className="mt-4 flex-1 min-h-[85vh]">
+          <iframe
+            src="https://online.pubhtml5.com/jqacy/qoxv/"
+            title="วิธีการดำเนินงาน E-Book"
+            className="h-full w-full"
+            allowFullScreen
+          />
+        </div>
+      </main>
     </>
   );
 }
