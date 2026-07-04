@@ -26,7 +26,7 @@ const appendices = [
     code: "ง",
     title: "ภาคผนวก ง",
     subtitle: "อินโฟกราฟิกสรุปเนื้อหา",
-    href: null,
+    href: "/appendix-d",
   },
 ];
 
@@ -35,7 +35,7 @@ const tools = [
   { label: "Line OA HEATSAFE", href: "https://line.me/R/ti/p/@034rqfnj" },
   { label: "WebApp HEATSAFE", href: "/webapp-heatsafe" },
   { label: "GEO TRAVEL", href: "/geo-travel" },
-  { label: "สถิติ", href: "#" },
+  { label: "เช็คสภาพอากาศ", href: "/weather-check" },
 ];
 
 export default function Home() {
