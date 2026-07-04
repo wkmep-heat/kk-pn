@@ -20,7 +20,7 @@ const appendices = [
     code: "ค",
     title: "ภาคผนวก ค",
     subtitle: "ภาพถ่ายดาวเทียม",
-    href: null,
+    href: "/appendix-c",
   },
   {
     code: "ง",
@@ -50,9 +50,6 @@ export default function Home() {
       <main className="flex-1">
         <section className="mx-auto max-w-5xl px-6 py-16 text-center">
           <h1 className="text-3xl sm:text-4xl font-bold">ภาคผนวก</h1>
-          <p className="mt-4 text-black/60">
-            รวบรวมเอกสารและข้อมูลประกอบ เนื้อหาจะทยอยเพิ่มเติมภายหลัง
-          </p>
         </section>
 
         <section className="mx-auto max-w-5xl px-6">
@@ -74,10 +71,6 @@ export default function Home() {
               );
             })}
           </div>
-
-          <p className="mt-3 text-center text-xs text-black/40">
-            เนื้อหาจะเพิ่มเติมภายหลัง
-          </p>
         </section>
 
         <section className="mx-auto max-w-5xl px-6 pt-10 pb-20">

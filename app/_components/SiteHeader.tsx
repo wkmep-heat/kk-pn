@@ -4,7 +4,7 @@ const navItems = [
   { label: "หน้าหลัก", href: "/" },
   { label: "ก", href: "/appendix-a" },
   { label: "ข", href: null },
-  { label: "ค", href: null },
+  { label: "ค", href: "/appendix-c" },
   { label: "ง", href: "/appendix-d" },
 ];
 
