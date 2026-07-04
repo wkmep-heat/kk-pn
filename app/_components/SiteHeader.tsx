@@ -5,6 +5,7 @@ const navItems = [
   { label: "ก", href: "/appendix-a" },
   { label: "ข", href: null },
   { label: "ค", href: null },
+  { label: "ง", href: null },
 ];
 
 export default function SiteHeader() {

@@ -156,7 +156,13 @@ export default function Interview() {
             </Link>{" "}
             / แบบสัมภาษณ์
           </p>
-          <h1 className="mt-2 text-2xl sm:text-3xl font-bold">
+          <Link
+            href="/"
+            className="mt-3 inline-flex items-center gap-1 rounded-full border-2 border-green-700 px-4 py-1.5 text-sm font-medium text-green-800 hover:bg-green-50 transition-colors"
+          >
+            ← กลับหน้าหลัก
+          </Link>
+          <h1 className="mt-4 text-2xl sm:text-3xl font-bold">
             2. แบบสัมภาษณ์ผู้รู้และผู้เกี่ยวข้อง
           </h1>
 
