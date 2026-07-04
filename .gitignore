@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# large source docs (host externally instead, e.g. e-book link)
+*.pdf

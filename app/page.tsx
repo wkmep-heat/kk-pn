@@ -14,7 +14,7 @@ const appendices = [
     code: "ข",
     title: "ภาคผนวก ข",
     subtitle: "วิธีการดำเนินงาน",
-    href: null,
+    href: "/appendix-b",
   },
   {
     code: "ค",
