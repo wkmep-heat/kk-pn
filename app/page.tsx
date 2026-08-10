@@ -92,8 +92,24 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-black/10">
-        <div className="mx-auto max-w-5xl px-6 py-6 text-center text-xs text-black/40">
-          © {new Date().getFullYear()} ภาคผนวก
+        <div className="mx-auto max-w-5xl px-6 py-6 text-center">
+          <div className="mb-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Link
+              href="/public-uploads"
+              className="rounded-full border-2 border-green-700 text-green-800 px-4 py-3 text-center text-sm font-medium hover:bg-green-50 transition-colors"
+            >
+              ดูภาพกิจกรรม
+            </Link>
+            <Link
+              href="/green-guide"
+              className="rounded-full border-2 border-green-700 text-green-800 px-4 py-3 text-center text-sm font-medium hover:bg-green-50 transition-colors"
+            >
+              คู่มือการเพิ่มพื้นที่สีเขียว
+            </Link>
+          </div>
+          <div className="text-xs text-black/40">
+            © {new Date().getFullYear()} ภาคผนวก
+          </div>
         </div>
       </footer>
     </>
