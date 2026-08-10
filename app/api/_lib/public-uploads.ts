@@ -11,11 +11,13 @@ export type PublicUploadEntry = {
 
 export async function listPublicUploads(): Promise<PublicUploadEntry[]> {
   const { blobs } = await list({ prefix: `${PUBLIC_FOLDER}/` });
-  return blobs.map((blob) => ({
-    id: blob.name,
-    filename: blob.name.replace(/^[^-]+-/, ""),
-    contentType: blob.contentType,
-  }));
+  return blobs.map((blob) => {
+    const id = blob.pathname.slice(`${PUBLIC_FOLDER}/`.length);
+    return {
+      id,
+      filename: id.replace(/^[^-]+-/, ""),
+    };
+  });
 }
 
 export async function savePublicUpload(

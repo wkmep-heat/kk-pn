@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
-import { getPublicUpload } from "../../_lib/public-uploads";
+import { getPublicUpload } from "../../../_lib/public-uploads";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const result = await getPublicUpload(id);
     if (!result || result.statusCode !== 200) {
@@ -12,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     return new Response(result.stream, {
       status: 200,
       headers: {
-        "Content-Type": result.contentType || "application/octet-stream",
+        "Content-Type": result.blob.contentType || "application/octet-stream",
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });
