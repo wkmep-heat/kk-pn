@@ -32,7 +32,7 @@ const appendices = [
 
 const tools = [
   { label: "SMART MAP", href: "/smart-map" },
-  { label: "Line OA HEATSAFE", href: "https://line.me/R/ti/p/@034rqfnj" },
+  { label: "Line OA HEATSAFE", href: "/line-guide" },
   { label: "WebApp HEATSAFE", href: "/webapp-heatsafe" },
   { label: "GEO TRAVEL", href: "/geo-travel" },
   { label: "เช็คสภาพอากาศ", href: "/weather-check" },
