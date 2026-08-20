@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import SiteHeader from "../_components/SiteHeader";
 
-const pageCount = 28;
+const pageCount = 34;
 
 export default function GreenGuidePage() {
   return (
@@ -25,10 +25,10 @@ export default function GreenGuidePage() {
             {Array.from({ length: pageCount }, (_, i) => i + 1).map((page) => (
               <Image
                 key={page}
-                src={`/green-guide/page-${page}.png`}
+                src={`/green-guide/page-${page}.jpg`}
                 alt={`คู่มือการเพิ่มพื้นที่สีเขียว เทศบาลนครขอนแก่น หน้า ${page}`}
-                width={1414}
-                height={2000}
+                width={1241}
+                height={1755}
                 className="w-full h-auto rounded-lg border border-black/10"
               />
             ))}
