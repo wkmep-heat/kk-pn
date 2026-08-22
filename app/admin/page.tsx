@@ -1,9 +1,12 @@
+import Link from "next/link";
 import SiteHeader from "../_components/SiteHeader";
 import { readSubmissions } from "../api/_lib/submissions";
 import AdminLogin from "./AdminLogin";
 import { isAdminAuthenticated } from "./auth";
 import DeleteButton from "./DeleteButton";
 import LogoutButton from "./LogoutButton";
+import { generateMockQuestionnaireSubmissions } from "./mockQuestionnaireData";
+import QuestionnaireCharts from "./QuestionnaireCharts";
 
 type ChoiceAnswer = { question: string; answer: string };
 type RatingAnswer = { statement: string; rating: string | null };
@@ -42,6 +45,15 @@ type FieldSurveySubmission = {
     fieldFinding: string;
     match: string;
   }[];
+};
+
+type LineSatisfactionSubmission = {
+  id: string;
+  submittedAt: string;
+  general?: ChoiceAnswer[];
+  menusUsed?: string[];
+  satisfaction?: RatingAnswer[];
+  suggestion?: string;
 };
 
 function formatDate(iso: string) {
@@ -230,7 +242,58 @@ function FieldSurveyList({ submissions }: { submissions: FieldSurveySubmission[]
   );
 }
 
-export default async function AdminPage() {
+function LineSatisfactionList({ submissions }: { submissions: LineSatisfactionSubmission[] }) {
+  if (submissions.length === 0) {
+    return <p className="mt-4 text-black/50">ยังไม่มีข้อมูลที่ส่งเข้ามา</p>;
+  }
+  return (
+    <div className="mt-4 space-y-4">
+      {submissions.map((s, idx) => (
+        <details key={s.id} className="rounded-lg border border-black/10 p-4">
+          <summary className="flex cursor-pointer items-center justify-between gap-4 font-medium">
+            <span>
+              ฉบับที่ {submissions.length - idx} — {formatDate(s.submittedAt)}
+            </span>
+            <DeleteButton type="line-satisfaction" id={s.id} />
+          </summary>
+          <div className="mt-4 space-y-4 text-sm">
+            <div>
+              <h4 className="font-semibold">ตอนที่ 1 ข้อมูลทั่วไป</h4>
+              <ul className="mt-1 list-disc list-inside">
+                {(s.general ?? []).map((a) => (
+                  <li key={a.question}>
+                    {a.question}: {a.answer || "—"}
+                  </li>
+                ))}
+                <li>เมนูที่เคยใช้งาน: {(s.menusUsed ?? []).join(", ") || "—"}</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold">ตอนที่ 2 ความพึงพอใจต่อการใช้งาน LINE OA</h4>
+              <ul className="mt-1 list-disc list-inside">
+                {(s.satisfaction ?? []).map((a) => (
+                  <li key={a.statement}>
+                    {a.statement}: {a.rating ?? "—"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold">ตอนที่ 3 ข้อเสนอแนะเพิ่มเติม</h4>
+              <p className="mt-1">{s.suggestion || "—"}</p>
+            </div>
+          </div>
+        </details>
+      ))}
+    </div>
+  );
+}
+
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const authed = await isAdminAuthenticated();
 
   if (!authed) {
@@ -250,15 +313,23 @@ export default async function AdminPage() {
     );
   }
 
-  const [questionnaire, interview, fieldSurvey] = await Promise.all([
+  const [questionnaire, interview, fieldSurvey, lineSatisfaction] = await Promise.all([
     readSubmissions("questionnaire-submissions.json") as Promise<QuestionnaireSubmission[]>,
     readSubmissions("interview-submissions.json") as Promise<InterviewSubmission[]>,
     readSubmissions("field-survey-submissions.json") as Promise<FieldSurveySubmission[]>,
+    readSubmissions("line-satisfaction-submissions.json") as Promise<LineSatisfactionSubmission[]>,
   ]);
 
   const questionnaireRev = questionnaire.slice().reverse();
   const interviewRev = interview.slice().reverse();
   const fieldSurveyRev = fieldSurvey.slice().reverse();
+  const lineSatisfactionRev = lineSatisfaction.slice().reverse();
+
+  const params = await searchParams;
+  const previewCount = params.preview === "1" ? 300 : 0;
+  const chartSubmissions = previewCount > 0
+    ? generateMockQuestionnaireSubmissions(previewCount)
+    : questionnaireRev;
 
   return (
     <>
@@ -271,9 +342,36 @@ export default async function AdminPage() {
           </div>
 
           <div className="mt-10">
-            <h2 className="text-lg font-bold">
-              1. แบบสอบถามประชาชน ({questionnaireRev.length})
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-bold">
+                1. แบบสอบถามประชาชน ({questionnaireRev.length})
+              </h2>
+              {previewCount > 0 ? (
+                <Link
+                  href="/admin"
+                  className="rounded-full border border-black/20 px-3 py-1 text-xs font-medium text-black/60 hover:border-black/40"
+                >
+                  ← กลับไปดูกราฟจากข้อมูลจริง
+                </Link>
+              ) : (
+                <Link
+                  href="/admin?preview=1"
+                  className="rounded-full border border-black/20 px-3 py-1 text-xs font-medium text-black/60 hover:border-black/40"
+                >
+                  ดูตัวอย่างกราฟจำลอง (300 คน)
+                </Link>
+              )}
+            </div>
+
+            {previewCount > 0 && (
+              <p className="mt-2 rounded-md bg-yellow-50 px-3 py-2 text-xs font-medium text-yellow-800">
+                ⚠️ กราฟด้านล่างนี้แสดง{" "}
+                <strong>ข้อมูลจำลอง {previewCount} ชุด</strong> เพื่อดูตัวอย่างหน้าตากราฟเท่านั้น
+                ไม่ใช่ข้อมูลจริง และไม่ถูกบันทึกลงระบบ — รายการแบบสอบถามด้านล่างยังเป็นข้อมูลจริงตามปกติ
+              </p>
+            )}
+
+            <QuestionnaireCharts submissions={chartSubmissions} isPreview={previewCount > 0} />
             <QuestionnaireList submissions={questionnaireRev} />
           </div>
 
@@ -289,6 +387,13 @@ export default async function AdminPage() {
               3. แบบบันทึกการสำรวจภาคสนาม ({fieldSurveyRev.length})
             </h2>
             <FieldSurveyList submissions={fieldSurveyRev} />
+          </div>
+
+          <div className="mt-10">
+            <h2 className="text-lg font-bold">
+              4. แบบประเมินความพึงพอใจการใช้งาน LINE OA ({lineSatisfactionRev.length})
+            </h2>
+            <LineSatisfactionList submissions={lineSatisfactionRev} />
           </div>
         </section>
       </main>

@@ -7,6 +7,7 @@ const messages: Record<string, string> = {
   questionnaire: "ส่งแบบสอบถามเรียบร้อยแล้ว ขอบคุณสำหรับข้อมูลของท่าน",
   interview: "ส่งแบบสัมภาษณ์เรียบร้อยแล้ว ขอบคุณสำหรับข้อมูลของท่าน",
   "field-survey": "ส่งแบบบันทึกการสำรวจเรียบร้อยแล้ว ขอบคุณสำหรับข้อมูลของท่าน",
+  "line-satisfaction": "ส่งแบบประเมินความพึงพอใจเรียบร้อยแล้ว ขอบคุณสำหรับข้อมูลของท่าน",
 };
 
 export default function SubmittedNotice() {

@@ -6,6 +6,7 @@ const FILE_NAMES: Record<string, string> = {
   questionnaire: "questionnaire-submissions.json",
   interview: "interview-submissions.json",
   "field-survey": "field-survey-submissions.json",
+  "line-satisfaction": "line-satisfaction-submissions.json",
 };
 
 export async function DELETE(request: NextRequest) {

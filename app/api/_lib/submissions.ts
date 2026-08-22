@@ -7,7 +7,16 @@ function folderFor(fileName: string) {
 
 export async function readSubmissions(fileName: string): Promise<unknown[]> {
   const prefix = `${folderFor(fileName)}/`;
-  const { blobs } = await list({ prefix });
+
+  let blobs;
+  try {
+    ({ blobs } = await list({ prefix }));
+  } catch (error) {
+    // Blob storage isn't configured (e.g. no BLOB_READ_WRITE_TOKEN in local dev).
+    // Fail soft so pages that list submissions can still render an empty state.
+    console.error(`readSubmissions(${fileName}): blob list failed`, error);
+    return [];
+  }
 
   const submissions = await Promise.all(
     blobs.map(async (blob) => {

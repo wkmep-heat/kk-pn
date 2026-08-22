@@ -54,6 +54,18 @@ export default function LineGuidePage() {
               />
             ))}
           </div>
+
+          <div className="mt-10 rounded-[2rem] border border-green-700/20 bg-green-50/70 p-6 text-center">
+            <p className="text-sm text-green-900">
+              ใช้งาน LINE OA &quot;HeatSafe Khon Kaen&quot; แล้ว? ช่วยประเมินความพึงพอใจเพื่อพัฒนาต่อยอด
+            </p>
+            <Link
+              href="/appendix-a/line-satisfaction"
+              className="mt-4 inline-flex items-center gap-2 rounded-full bg-green-700 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-800"
+            >
+              ทำแบบประเมินความพึงพอใจ
+            </Link>
+          </div>
         </section>
       </main>
 

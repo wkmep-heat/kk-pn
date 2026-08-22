@@ -17,6 +17,11 @@ const items = [
     title: "แบบบันทึกการสำรวจภาคสนาม",
     href: "/appendix-a/field-survey",
   },
+  {
+    number: 4,
+    title: "แบบประเมินความพึงพอใจการใช้งาน LINE OA",
+    href: "/appendix-a/line-satisfaction",
+  },
 ];
 
 export default function AppendixA() {

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-type SubmissionType = "questionnaire" | "interview" | "field-survey";
+type SubmissionType = "questionnaire" | "interview" | "field-survey" | "line-satisfaction";
 
 export default function DeleteButton({ type, id }: { type: SubmissionType; id: string }) {
   const router = useRouter();
