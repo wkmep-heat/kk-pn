@@ -1,17 +1,16 @@
-export type ChoiceAnswer = { question: string; answer: string };
-export type RatingAnswer = { statement: string; rating: string | null };
-
-export type QuestionnaireSubmission = {
-  id: string;
-  submittedAt: string;
-  part1?: ChoiceAnswer[];
-  part2?: RatingAnswer[];
-  part3?: ChoiceAnswer[];
-  part4?: RatingAnswer[];
-  part5?: string;
-};
-
-const TARGET_SAMPLE = 300;
+import {
+  REAL_RESPONSE_COUNT,
+  ageCounts,
+  genderCounts,
+  heatPerceptionAverages,
+  hotspotCharacterCounts,
+  hotspotImpactCounts,
+  hotspotTimeCounts,
+  regularAreaCounts,
+  smartMapLineOaAverages,
+  statusCounts,
+  usageFrequencyCounts,
+} from "./realQuestionnaireResults";
 
 export const part1Questions = [
   { text: "เพศ", options: ["ชาย", "หญิง", "ไม่ประสงค์ระบุ"] },
@@ -35,18 +34,12 @@ export const part1Questions = [
       "ครู/บุคลากรทางการศึกษา",
       "ผู้ค้า/ผู้ประกอบอาชีพในเขตเมือง",
       "ประชาชนทั่วไป",
-      "อื่น ๆ ระบุ ……………………………………………..",
+      "อื่น ๆ",
     ],
   },
   {
     text: "ท่านใช้พื้นที่ในเขตเทศบาลนครขอนแก่นบ่อยเพียงใด",
-    options: [
-      "ทุกวัน",
-      "3–5 วันต่อสัปดาห์",
-      "1–2 วันต่อสัปดาห์",
-      "นาน ๆ ครั้ง",
-      "อื่น ๆ ระบุ ……………………………………………..",
-    ],
+    options: ["ทุกวัน", "3–5 วันต่อสัปดาห์", "1–2 วันต่อสัปดาห์", "นาน ๆ ครั้ง", "อื่น ๆ"],
   },
   {
     text: "พื้นที่ที่ท่านใช้เป็นประจำ",
@@ -58,7 +51,7 @@ export const part1Questions = [
       "สถานที่ราชการ",
       "ห้างสรรพสินค้า/ย่านการค้า",
       "สวนสาธารณะ",
-      "อื่น ๆ ระบุ ……………………………………………..",
+      "อื่น ๆ",
     ],
   },
 ];
@@ -83,7 +76,7 @@ export const part3CharacterOptions = [
   "รถติด",
   "ฝุ่นมาก",
   "น้ำท่วมขังหลังฝนตก",
-  "อื่น ๆ ระบุ ……………………………………………..",
+  "อื่น ๆ",
 ];
 
 export const part3TimeOptions = [
@@ -100,7 +93,7 @@ export const part3ImpactOptions = [
   "เหงื่อออกมาก",
   "ต้องหลีกเลี่ยงพื้นที่กลางแจ้ง",
   "ต้องเสียค่าใช้จ่ายเพิ่ม เช่น เครื่องดื่ม ค่าเดินทาง หรือเครื่องปรับอากาศ",
-  "อื่น ๆ ระบุ ……………………………………………..",
+  "อื่น ๆ",
 ];
 
 export const part4Statements = [
@@ -111,49 +104,8 @@ export const part4Statements = [
   "ข้อมูลจากประชาชนควรถูกนำไปใช้ประกอบการวางแผนพัฒนาเมือง",
 ];
 
-function normalizeLabel(opt: string) {
-  return opt.startsWith("อื่น ๆ ระบุ") ? "อื่น ๆ" : opt;
-}
-
-function tallySingle(answers: (string | undefined)[], options: string[]) {
-  const labels = options.map(normalizeLabel);
-  const counts = new Map(labels.map((l) => [l, 0]));
-  let total = 0;
-  answers.forEach((raw) => {
-    const a = (raw ?? "").trim();
-    if (!a) return;
-    const key = a.startsWith("อื่น ๆ") ? "อื่น ๆ" : a;
-    if (counts.has(key)) {
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-      total++;
-    }
-  });
-  return { total, items: labels.map((l) => ({ label: l, value: counts.get(l) ?? 0 })) };
-}
-
-function tallyMulti(answers: (string | undefined)[], options: string[]) {
-  const labels = options.map(normalizeLabel);
-  const counts = new Map(labels.map((l) => [l, 0]));
-  let respondents = 0;
-  answers.forEach((raw) => {
-    const a = (raw ?? "").trim();
-    if (!a) return;
-    respondents++;
-    a.split(",")
-      .map((s) => s.trim())
-      .forEach((part) => {
-        const key = part.startsWith("อื่น ๆ") ? "อื่น ๆ" : part;
-        if (counts.has(key)) counts.set(key, (counts.get(key) ?? 0) + 1);
-      });
-  });
-  return { respondents, items: labels.map((l) => ({ label: l, value: counts.get(l) ?? 0 })) };
-}
-
-function likertAverage(ratings: (string | null | undefined)[]) {
-  const nums = ratings
-    .map((r) => (r ? Number(r) : NaN))
-    .filter((n) => Number.isFinite(n));
-  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
+function zip(labels: string[], values: number[]) {
+  return labels.map((label, i) => ({ label, value: values[i] ?? 0 }));
 }
 
 function BarChart({
@@ -191,157 +143,117 @@ function BarChart({
   );
 }
 
-export default function QuestionnaireCharts({
-  submissions,
-  isPreview = false,
-}: {
-  submissions: QuestionnaireSubmission[];
-  isPreview?: boolean;
-}) {
-  const n = submissions.length;
-  const progressPct = Math.min(100, (n / TARGET_SAMPLE) * 100);
-
-  const part1Charts = part1Questions.map((q, qi) => {
-    const answers = submissions.map((s) => s.part1?.[qi]?.answer);
-    return { title: q.text, ...tallySingle(answers, q.options) };
-  });
-
-  const part2Items = part2Statements.map((statement, i) => ({
-    label: statement,
-    value: likertAverage(submissions.map((s) => s.part2?.[i]?.rating)),
-  }));
-
-  const hotspotChar = tallyMulti(
-    submissions.map((s) => s.part3?.[1]?.answer),
-    part3CharacterOptions
-  );
-  const hotspotTime = tallySingle(
-    submissions.map((s) => s.part3?.[2]?.answer),
-    part3TimeOptions
-  );
-  const hotspotImpact = tallyMulti(
-    submissions.map((s) => s.part3?.[3]?.answer),
-    part3ImpactOptions
-  );
-
-  const part4Items = part4Statements.map((statement, i) => ({
-    label: statement,
-    value: likertAverage(submissions.map((s) => s.part4?.[i]?.rating)),
-  }));
+export default function QuestionnaireCharts() {
+  const n = REAL_RESPONSE_COUNT;
+  const pctFormat = (v: number) => `${v} คน (${Math.round((v / n) * 100)}%)`;
+  const countFormat = (v: number) => `${v} คน`;
+  const avgFormat = (v: number) => `${v.toFixed(2)} / 5`;
 
   return (
-    <div
-      className={`mt-6 space-y-8 rounded-2xl border p-6 ${
-        isPreview ? "border-yellow-300 bg-yellow-50/40" : "border-black/10"
-      }`}
-    >
+    <div className="mt-6 space-y-8 rounded-2xl border border-black/10 p-6">
       <div>
-        <p className="text-sm text-black/60">
-          {isPreview ? "จำนวนผู้ตอบแบบสอบถาม (ข้อมูลจำลอง — ไม่ใช่ข้อมูลจริง)" : (
-            <>จำนวนผู้ตอบแบบสอบถาม (เป้าหมายกลุ่มตัวอย่าง {TARGET_SAMPLE} คน)</>
-          )}
-        </p>
+        <p className="text-sm text-black/60">จำนวนผู้ตอบแบบสอบถามทั้งหมด</p>
         <div className="mt-1 flex items-baseline gap-2">
           <span className="text-3xl font-bold text-[#2a78d6]">{n}</span>
-          <span className="text-sm text-black/50">
-            / {TARGET_SAMPLE} คน ({progressPct.toFixed(0)}%)
-          </span>
-        </div>
-        <div className="mt-2 h-2.5 w-full max-w-md rounded-full bg-black/5">
-          <div
-            className="h-2.5 rounded-full bg-[#2a78d6]"
-            style={{ width: `${n > 0 ? Math.max(progressPct, 2) : 0}%` }}
-          />
+          <span className="text-sm text-black/50">คน</span>
         </div>
       </div>
 
-      {n === 0 ? (
-        <p className="text-sm text-black/50">ยังไม่มีข้อมูลสำหรับสร้างกราฟ</p>
-      ) : (
-        <>
+      <div>
+        <h4 className="font-semibold">ตอนที่ 1 ข้อมูลทั่วไปของผู้ตอบแบบสอบถาม</h4>
+        <div className="mt-4 grid gap-x-8 gap-y-6 sm:grid-cols-2">
           <div>
-            <h4 className="font-semibold">ตอนที่ 1 ข้อมูลทั่วไปของผู้ตอบแบบสอบถาม</h4>
-            <div className="mt-4 grid gap-x-8 gap-y-6 sm:grid-cols-2">
-              {part1Charts.map((c) => (
-                <div key={c.title}>
-                  <p className="text-sm font-medium text-black/80">{c.title}</p>
-                  <div className="mt-2">
-                    <BarChart
-                      items={c.items}
-                      max={Math.max(c.total, 1)}
-                      formatValue={(v) =>
-                        `${v} คน (${c.total > 0 ? Math.round((v / c.total) * 100) : 0}%)`
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
+            <p className="text-sm font-medium text-black/80">{part1Questions[0].text}</p>
+            <div className="mt-2">
+              <BarChart items={zip(part1Questions[0].options, genderCounts)} max={n} formatValue={pctFormat} />
             </div>
           </div>
+          <div>
+            <p className="text-sm font-medium text-black/80">{part1Questions[1].text}</p>
+            <div className="mt-2">
+              <BarChart items={zip(part1Questions[1].options, ageCounts)} max={n} formatValue={pctFormat} />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-black/80">{part1Questions[2].text}</p>
+            <div className="mt-2">
+              <BarChart items={zip(part1Questions[2].options, statusCounts)} max={n} formatValue={pctFormat} />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-black/80">{part1Questions[3].text}</p>
+            <div className="mt-2">
+              <BarChart
+                items={zip(part1Questions[3].options, usageFrequencyCounts)}
+                max={n}
+                formatValue={pctFormat}
+              />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-black/80">{part1Questions[4].text}</p>
+            <div className="mt-2">
+              <BarChart
+                items={zip(part1Questions[4].options, regularAreaCounts)}
+                max={n}
+                formatValue={pctFormat}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <div>
-            <h4 className="font-semibold">
-              ตอนที่ 2 การรับรู้ปัญหาความร้อนเมือง (ค่าเฉลี่ยระดับความคิดเห็น เต็ม 5)
-            </h4>
-            <div className="mt-3">
-              <BarChart items={part2Items} max={5} formatValue={(v) => `${v.toFixed(2)} / 5`} />
-            </div>
-          </div>
+      <div>
+        <h4 className="font-semibold">
+          ตอนที่ 2 การรับรู้ปัญหาความร้อนเมือง (ค่าเฉลี่ยระดับความคิดเห็น เต็ม 5)
+        </h4>
+        <div className="mt-3">
+          <BarChart items={zip(part2Statements, heatPerceptionAverages)} max={5} formatValue={avgFormat} />
+        </div>
+      </div>
 
+      <div>
+        <h4 className="font-semibold">ตอนที่ 3 พื้นที่ที่ประชาชนรับรู้ว่าเป็นจุดร้อนหรือจุดเสี่ยง</h4>
+        <div className="mt-4 space-y-6">
           <div>
-            <h4 className="font-semibold">
-              ตอนที่ 3 พื้นที่ที่ประชาชนรับรู้ว่าเป็นจุดร้อนหรือจุดเสี่ยง
-            </h4>
-            <div className="mt-4 space-y-6">
-              <div>
-                <p className="text-sm font-medium text-black/80">
-                  ลักษณะของพื้นที่ร้อน (เลือกได้หลายข้อ)
-                </p>
-                <div className="mt-2">
-                  <BarChart
-                    items={hotspotChar.items}
-                    max={Math.max(hotspotChar.respondents, 1)}
-                    formatValue={(v) => `${v} คน`}
-                  />
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-black/80">ช่วงเวลาที่รู้สึกร้อนมากที่สุด</p>
-                <div className="mt-2">
-                  <BarChart
-                    items={hotspotTime.items}
-                    max={Math.max(hotspotTime.total, 1)}
-                    formatValue={(v) =>
-                      `${v} คน (${hotspotTime.total > 0 ? Math.round((v / hotspotTime.total) * 100) : 0}%)`
-                    }
-                  />
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-black/80">
-                  ผลกระทบที่ได้รับจากความร้อน (เลือกได้หลายข้อ)
-                </p>
-                <div className="mt-2">
-                  <BarChart
-                    items={hotspotImpact.items}
-                    max={Math.max(hotspotImpact.respondents, 1)}
-                    formatValue={(v) => `${v} คน`}
-                  />
-                </div>
-              </div>
+            <p className="text-sm font-medium text-black/80">ลักษณะของพื้นที่ร้อน (เลือกได้หลายข้อ)</p>
+            <div className="mt-2">
+              <BarChart
+                items={zip(part3CharacterOptions, hotspotCharacterCounts)}
+                max={n}
+                formatValue={countFormat}
+              />
             </div>
           </div>
+          <div>
+            <p className="text-sm font-medium text-black/80">ช่วงเวลาที่รู้สึกร้อนมากที่สุด</p>
+            <div className="mt-2">
+              <BarChart items={zip(part3TimeOptions, hotspotTimeCounts)} max={n} formatValue={pctFormat} />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-black/80">
+              ผลกระทบที่ได้รับจากความร้อน (เลือกได้หลายข้อ)
+            </p>
+            <div className="mt-2">
+              <BarChart
+                items={zip(part3ImpactOptions, hotspotImpactCounts)}
+                max={n}
+                formatValue={countFormat}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <div>
-            <h4 className="font-semibold">
-              ตอนที่ 4 ความคิดเห็นต่อระบบ Smart Map และ LINE OA (ค่าเฉลี่ย เต็ม 5)
-            </h4>
-            <div className="mt-3">
-              <BarChart items={part4Items} max={5} formatValue={(v) => `${v.toFixed(2)} / 5`} />
-            </div>
-          </div>
-        </>
-      )}
+      <div>
+        <h4 className="font-semibold">
+          ตอนที่ 4 ความคิดเห็นต่อระบบ Smart Map และ LINE OA (ค่าเฉลี่ย เต็ม 5)
+        </h4>
+        <div className="mt-3">
+          <BarChart items={zip(part4Statements, smartMapLineOaAverages)} max={5} formatValue={avgFormat} />
+        </div>
+      </div>
     </div>
   );
 }
